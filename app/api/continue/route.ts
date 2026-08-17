@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { chatCompletion, truncatePathText } from "@/lib/llm";
+import { chatCompletion, EmptyContentError, truncatePathText } from "@/lib/llm";
 import { CONTINUE_SYSTEM_PROMPT, buildContinuePrompt } from "@/lib/prompts";
 import { enforceRateLimit, errorResponse, toErrorResponse } from "@/lib/errors";
 import { checkAccessCode } from "@/lib/accessCode";
@@ -46,26 +46,32 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     );
   }
 
-  try {
-    const content = await chatCompletion(
-      [
-        { role: "system", content: CONTINUE_SYSTEM_PROMPT },
-        {
-          role: "user",
-          content: buildContinuePrompt(path, {
-            title,
-            summary,
-            conflict,
-          }),
-        },
-      ],
-      { temperature: 0.7, maxTokens: 1200 }
-    );
-    if (content.length < MIN_CONTENT_LENGTH) {
-      return errorResponse(502, "AI 返回的续写内容过短，请点击重试。");
+  // 空内容/过短输出视为偶发瞬时故障，自动重试 1 次；其余错误直接返回
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      const content = await chatCompletion(
+        [
+          { role: "system", content: CONTINUE_SYSTEM_PROMPT },
+          {
+            role: "user",
+            content: buildContinuePrompt(path, {
+              title,
+              summary,
+              conflict,
+            }),
+          },
+        ],
+        { temperature: 0.7, maxTokens: 1200 }
+      );
+      if (content.length < MIN_CONTENT_LENGTH) {
+        if (attempt === 1) continue;
+        return errorResponse(502, "AI 返回的续写内容过短，请点击重试。");
+      }
+      return NextResponse.json({ content });
+    } catch (err) {
+      if (attempt === 1 && err instanceof EmptyContentError) continue;
+      return toErrorResponse(err);
     }
-    return NextResponse.json({ content });
-  } catch (err) {
-    return toErrorResponse(err);
   }
+  return errorResponse(502, "AI 返回的续写内容异常，已自动重试一次仍失败，请稍后再试。");
 }

@@ -25,6 +25,14 @@ export class UpstreamError extends Error {
   }
 }
 
+// 上游返回空内容（偶发/瞬时故障），路由层可对其自动重试一次后再报错
+export class EmptyContentError extends UpstreamError {
+  constructor() {
+    super("LLM 返回了空内容，请稍后重试。", 502);
+    this.name = "EmptyContentError";
+  }
+}
+
 export type ChatMessage = {
   role: "system" | "user" | "assistant";
   content: string;
@@ -117,7 +125,7 @@ export async function chatCompletion(
     };
     const text = data?.choices?.[0]?.message?.content;
     if (typeof text !== "string" || !text.trim()) {
-      throw new UpstreamError("LLM 返回了空内容，请稍后重试。", 502);
+      throw new EmptyContentError();
     }
     return text.trim();
   } catch (err) {

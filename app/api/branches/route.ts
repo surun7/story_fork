@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { chatCompletion, truncatePathText } from "@/lib/llm";
+import { chatCompletion, EmptyContentError, truncatePathText } from "@/lib/llm";
 import { BRANCH_SYSTEM_PROMPT, buildBranchesPrompt } from "@/lib/prompts";
 import { enforceRateLimit, errorResponse, toErrorResponse } from "@/lib/errors";
 import { checkAccessCode } from "@/lib/accessCode";
@@ -67,23 +67,26 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // 成本控制：超长全文中间截断，保留开头与最近内容
   const path = truncatePathText(pathText.trim());
 
-  // JSON 解析失败时自动重试 1 次（共 2 次尝试）；
-  // 配置缺失/上游错误直接返回可读错误，不重复浪费配额与时间
+  // JSON 解析失败或返回空内容时自动重试 1 次（共 2 次尝试）；
+  // 配置缺失/超时/上游 HTTP 错误直接返回可读错误，不重复浪费配额与时间
   for (let attempt = 1; attempt <= 2; attempt++) {
+    let raw: string;
     try {
-      const raw = await chatCompletion(
+      raw = await chatCompletion(
         [
           { role: "system", content: BRANCH_SYSTEM_PROMPT },
           { role: "user", content: buildBranchesPrompt(path) },
         ],
         { temperature: attempt === 1 ? 0.85 : 0.95, maxTokens: 800 }
       );
-      const branches = parseBranches(raw);
-      if (branches) {
-        return NextResponse.json({ branches });
-      }
     } catch (err) {
+      // 空内容是偶发瞬时故障，给一次重试机会；其余错误直接返回
+      if (attempt === 1 && err instanceof EmptyContentError) continue;
       return toErrorResponse(err);
+    }
+    const branches = parseBranches(raw);
+    if (branches) {
+      return NextResponse.json({ branches });
     }
   }
 
