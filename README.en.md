@@ -131,9 +131,3 @@ lib/
 1. Cloud storage & work sharing (account system + server-side persistence);
 2. Branch comparison view (side-by-side comparison of multiple branches at the same node);
 3. Story tone customization (style / genre / length preferences injected into the prompt).
-
-## AI-Assisted Development Notes
-
-This project is an AI-assisted coding product: the AI wrote the vast majority of the code across three iterations (M1 main path → M2 branch tree & backtracking → M3 persistence & export), while humans were responsible for requirement convergence, prompt design, acceptance testing, and bug review.
-
-A representative case: **during M2, a leftover M1 retry bug was found and fixed** — in M1, clicking "Retry" after a failed continuation was silently blocked by a `phase !== "ready"` guard, so the error panel stayed stuck in the error state. The M2 refactor moved double-click protection to the UI disabled state, restoring the retry path. The bug was discovered through a manual, line-by-line review of the error paths, which shows why the "AI writes, humans review" collaboration model matters for delivery quality.
