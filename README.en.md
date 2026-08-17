@@ -70,7 +70,7 @@ Production notes:
 
 The main path has three steps:
 
-1. **Start**: enter a story opening on the homepage (or click a sample to fill it in) → "Start creating", which automatically creates a new work and opens the writing page;
+1. **Start**: pick a creation tone on the homepage (Free / Suspense / Warm / Comedy / Dark), enter a story opening (or click a sample to fill it in) → "Start creating", which automatically creates a new work and opens the writing page;
 2. **Choose**: 3 branch cards appear at the bottom of the writing page (direction title / plot summary / core conflict); click one;
 3. **Grow**: the AI continues 300–500 characters along the chosen direction, appends the paragraph, then automatically generates the next round of 3 directions — repeat.
 
@@ -88,7 +88,7 @@ Advanced capabilities:
 
 - **Next.js 14 (App Router) + TypeScript + Tailwind CSS**, single project, no separate backend;
 - **LLM calls**: two Route Handlers under `app/api/` (`POST /api/branches`, `POST /api/continue`), configured via environment variables and compatible with the OpenAI Chat Completions protocol (DeepSeek and similar work directly). Both endpoints automatically retry once when JSON parsing fails or the model returns empty content;
-- **Pure-function story tree**: `lib/storyTree.ts` manages the node tree immutably (`createRoot / appendNode / switchActive / setNodeBranches`); `lib/storage.ts` handles serialization and LocalStorage persistence (corrupted-data tolerance, silent degrade on quota overflow); `lib/markdown.ts` generates the exported Markdown. All three have unit test coverage;
+- **Pure-function story tree**: `lib/storyTree.ts` manages the node tree immutably (`createRoot / appendNode / switchActive / setNodeBranches`); `lib/storage.ts` handles serialization and LocalStorage persistence (corrupted-data tolerance, silent degrade on quota overflow); `lib/markdown.ts` generates the exported Markdown; `lib/tone.ts` defines the creation-tone whitelist and normalization. All of the above have unit test coverage;
 - **Frontend state**: all interaction is managed with React state; no database.
 
 ```

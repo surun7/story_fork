@@ -72,7 +72,7 @@ curl -I http://localhost:3000
 
 主路径三步：
 
-1. **开始**：首页输入故事开头（或点击示例一键填入）→「开始创作」，自动创建新作品并进入写作页；
+1. **开始**：首页选择创作基调（自由发挥 / 悬疑 / 温情 / 喜剧 / 暗黑），输入故事开头（或点击示例一键填入）→「开始创作」，自动创建新作品并进入写作页；
 2. **选择**：写作页底部出现 3 张分支卡片（方向标题 / 剧情简介 / 核心冲突），点击其一；
 3. **生长**：AI 沿所选方向续写 300–500 字并追加到正文，随后自动生成下一轮 3 个方向，循环往复。
 
@@ -90,14 +90,15 @@ curl -I http://localhost:3000
 
 - **Next.js 14（App Router）+ TypeScript + Tailwind CSS**，单项目、无独立后端；
 - **LLM 调用**：`app/api/` 下两个 Route Handler（`POST /api/branches`、`POST /api/continue`），通过环境变量配置，兼容 OpenAI Chat Completions 协议（DeepSeek 等可直接使用）；两个接口在 JSON 解析失败或模型返回空内容时均自动重试 1 次；
-- **纯函数故事树**：`lib/storyTree.ts` 以不可变方式管理节点树（`createRoot / appendNode / switchActive / setNodeBranches`）；`lib/storage.ts` 负责作品序列化与 LocalStorage 读写（损坏数据容错、配额超限静默降级）；`lib/markdown.ts` 生成导出成稿。三者均有单元测试覆盖；
+- **纯函数故事树**：`lib/storyTree.ts` 以不可变方式管理节点树（`createRoot / appendNode / switchActive / setNodeBranches`）；`lib/storage.ts` 负责作品序列化与 LocalStorage 读写（损坏数据容错、配额超限静默降级）；`lib/markdown.ts` 生成导出成稿；`lib/tone.ts` 定义创作基调白名单与归一化。上述模块均有单元测试覆盖；
 - **前端状态**：React state 管理全部交互，无数据库。
 
 ```
 app/
   api/branches/route.ts    # POST 生成 3 个分支（解析失败/空内容自动重试 1 次）
   api/continue/route.ts    # POST 沿选定分支续写正文（空内容自动重试 1 次）
-  page.tsx                 # 首页（开始创作 + 我的作品列表）
+  api/config/route.ts      # GET 配置探测（是否需要访问口令）
+  page.tsx                 # 首页（创作基调 + 开始创作 + 我的作品列表）
   write/page.tsx           # 写作页入口（Suspense 包裹）
 components/
   WriteView.tsx            # 写作页核心（树状态机 / 回退 / 自动保存 / 导出）
