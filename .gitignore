@@ -1,0 +1,45 @@
+# ===== 依赖与构建产物 =====
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+
+# ===== 环境变量与密钥：只存本地文件，绝不入库 =====
+# .env.example 保留入库（仅变量名，无真实值）
+.env
+.env.*
+!.env.example
+
+# ===== Agent 本地数据与个人配置（含会话记录、计划、凭据缓存，不入库）=====
+.zcode/
+.claude/
+.cursor/
+.agent/
+AGENTS.local.md
+
+# ===== 密钥与凭据文件（兜底，即使误命名也能拦住）=====
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa
+id_ed25519
+credentials.json
+secrets*.json
+
+# ===== 日志（可能包含请求细节与敏感信息）=====
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ===== 系统与编辑器 =====
+.DS_Store
+Thumbs.db
+Desktop.ini
+.vscode/
+.idea/
+
+# ===== 其他 =====
+coverage/
+.vercel/
