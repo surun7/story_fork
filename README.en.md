@@ -24,7 +24,9 @@ Environment variables (keys are read from `process.env` on the server side only,
 | --- | --- | --- | --- |
 | `LLM_API_KEY` | ✅ | none | Your LLM API key (e.g., from DeepSeek Open Platform platform.deepseek.com) |
 | `LLM_BASE_URL` | no | `https://api.deepseek.com` | OpenAI Chat Completions compatible endpoint |
-| `LLM_MODEL` | no | `deepseek-chat` | Model name |
+| `LLM_MODEL` | no | `deepseek-chat` | Model name (use the officially documented stable model, e.g., `deepseek-chat`) |
+
+> Tip: transient empty model responses are automatically retried once before an error is shown; the "Retry" button on the page error panel only replays the failed step.
 | `ACCESS_CODE` | no | none | Optional access code; empty disables it. When set, the homepage asks for it and the server validates it via a request header |
 
 Other commands:
@@ -77,19 +79,19 @@ Advanced capabilities:
 - **Backtracking & the branch tree**: the "Story Path" panel (fixed left sidebar on desktop / drawer from the top bar on mobile) shows the full chain from root to the current node. Click any historical node to go back to that moment and choose a new direction. Backtracking never deletes anything: old branches are fully preserved, and fork points (≥2 child branches) list clickable child branches;
 - **Auto-save**: every tree change is debounced 500ms and written to browser LocalStorage. After a refresh, the work, the branch tree, and the active position are fully restored. The "My Works" list on the homepage supports continuing or deleting works (delete requires a two-step confirmation); multiple works never interfere with each other;
 - **Export as Markdown**: the "Export" button at the top of the writing page downloads the current active chain (root → activeLeaf) as Markdown — `# title` (first 12 characters of the root node) plus each paragraph, blank lines between paragraphs, and paragraphs continued along a branch are prefixed with a quote line `> Direction: xx`. Filename: `StoryFork-<title>-<date>.md`, downloaded directly by the browser;
-- **Error handling**: when the LLM key is missing, a clear Chinese configuration guide is shown (503); upstream failures / parse failures return readable errors (502); the page error panel supports retry, and retry only replays the failed step.
+- **Error handling**: when the LLM key is missing, a clear Chinese configuration guide is shown (503); JSON parse failures or empty model responses are automatically retried once, and a readable error (502) is returned only if they fail again; the page error panel supports retry, and retry only replays the failed step.
 
 ## Tech Architecture
 
 - **Next.js 14 (App Router) + TypeScript + Tailwind CSS**, single project, no separate backend;
-- **LLM calls**: two Route Handlers under `app/api/` (`POST /api/branches`, `POST /api/continue`), configured via environment variables and compatible with the OpenAI Chat Completions protocol (DeepSeek and similar work directly). The branches endpoint automatically retries once when JSON parsing fails;
+- **LLM calls**: two Route Handlers under `app/api/` (`POST /api/branches`, `POST /api/continue`), configured via environment variables and compatible with the OpenAI Chat Completions protocol (DeepSeek and similar work directly). Both endpoints automatically retry once when JSON parsing fails or the model returns empty content;
 - **Pure-function story tree**: `lib/storyTree.ts` manages the node tree immutably (`createRoot / appendNode / switchActive / setNodeBranches`); `lib/storage.ts` handles serialization and LocalStorage persistence (corrupted-data tolerance, silent degrade on quota overflow); `lib/markdown.ts` generates the exported Markdown. All three have unit test coverage;
 - **Frontend state**: all interaction is managed with React state; no database.
 
 ```
 app/
-  api/branches/route.ts    # POST generate 3 branches (auto-retry once on JSON parse failure)
-  api/continue/route.ts    # POST continue along the selected branch
+  api/branches/route.ts    # POST generate 3 branches (auto-retry once on parse failure / empty content)
+  api/continue/route.ts    # POST continue along the selected branch (auto-retry once on empty content)
   api/config/route.ts      # GET feature detection (whether an access code is required)
   page.tsx                 # Homepage (start creating + My Works list)
   write/page.tsx           # Writing page entry (wrapped in Suspense)

@@ -26,7 +26,9 @@ npm run dev                  # 打开 http://localhost:3000
 | --- | --- | --- | --- |
 | `LLM_API_KEY` | ✅ | 无 | 你的 LLM API Key（如 DeepSeek 开放平台 platform.deepseek.com） |
 | `LLM_BASE_URL` | 否 | `https://api.deepseek.com` | OpenAI Chat Completions 兼容的接口地址 |
-| `LLM_MODEL` | 否 | `deepseek-chat` | 模型名 |
+| `LLM_MODEL` | 否 | `deepseek-chat` | 模型名（建议使用官方稳定模型，如 `deepseek-chat`） |
+
+> 提示：模型偶发返回空内容时，接口会自动重试 1 次后再报错；页面错误面板的「重试」只重放失败的那一步。
 | `ACCESS_CODE` | 否 | 无 | 可选访问口令；留空不启用，配置后前端要求输入口令并随请求头校验 |
 
 其他命令：
@@ -79,19 +81,19 @@ curl -I http://localhost:3000
 - **回退与分支树**：「故事路径」面板（桌面端左侧固定栏 / 移动端顶部抽屉）展示 root → 当前节点的完整链路；点击任意历史节点即可回到那一刻重新选择方向。回退不删除任何已生成内容，旧分支完整保留；分叉点（≥2 个子分支）会列出可跳转的子分支列表；
 - **自动保存**：每次树变更防抖 500ms 自动写入浏览器 LocalStorage，刷新页面后作品、分支树与激活位置完整恢复；首页「我的作品」列表可继续创作或删除（删除需二次确认），多个作品互不干扰；
 - **导出成稿**：写作页顶部「导出成稿」下载当前激活链路（root → activeLeaf）的 Markdown，格式为 `# 标题`（根节点前 12 字）+ 各段正文，段落间空行，沿分支续写的段落前标注 `> 走向：xx`；文件名「故事岔口-标题-日期.md」，浏览器直接下载；
-- **错误处理**：LLM 密钥未配置时给出中文配置指引（503）；上游失败/解析失败返回可读错误（502）；页面错误面板支持重试，且只重放失败的那一步。
+- **错误处理**：LLM 密钥未配置时给出中文配置指引（503）；JSON 解析失败或模型返回空内容时自动重试 1 次，仍失败返回可读错误（502）；页面错误面板支持重试，且只重放失败的那一步。
 
 ## 技术架构
 
 - **Next.js 14（App Router）+ TypeScript + Tailwind CSS**，单项目、无独立后端；
-- **LLM 调用**：`app/api/` 下两个 Route Handler（`POST /api/branches`、`POST /api/continue`），通过环境变量配置，兼容 OpenAI Chat Completions 协议（DeepSeek 等可直接使用）；分支接口在 JSON 解析失败时自动重试 1 次；
+- **LLM 调用**：`app/api/` 下两个 Route Handler（`POST /api/branches`、`POST /api/continue`），通过环境变量配置，兼容 OpenAI Chat Completions 协议（DeepSeek 等可直接使用）；两个接口在 JSON 解析失败或模型返回空内容时均自动重试 1 次；
 - **纯函数故事树**：`lib/storyTree.ts` 以不可变方式管理节点树（`createRoot / appendNode / switchActive / setNodeBranches`）；`lib/storage.ts` 负责作品序列化与 LocalStorage 读写（损坏数据容错、配额超限静默降级）；`lib/markdown.ts` 生成导出成稿。三者均有单元测试覆盖；
 - **前端状态**：React state 管理全部交互，无数据库。
 
 ```
 app/
-  api/branches/route.ts    # POST 生成 3 个分支（JSON 解析失败自动重试 1 次）
-  api/continue/route.ts    # POST 沿选定分支续写正文
+  api/branches/route.ts    # POST 生成 3 个分支（解析失败/空内容自动重试 1 次）
+  api/continue/route.ts    # POST 沿选定分支续写正文（空内容自动重试 1 次）
   page.tsx                 # 首页（开始创作 + 我的作品列表）
   write/page.tsx           # 写作页入口（Suspense 包裹）
 components/
