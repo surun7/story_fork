@@ -127,9 +127,3 @@ lib/
 - LLM calls are real requests billed **by API usage**;
 - Rate limiting is a single-instance in-memory implementation: **it is an approximation under serverless multi-instance deployments — switch to Upstash Redis (distributed rate limiting) in production**;
 - No concurrent collaboration, no branch diff/merge views.
-
-## Next Steps (Priority Order)
-
-1. Cloud storage & work sharing (account system + server-side persistence);
-2. Branch comparison view (side-by-side comparison of multiple branches at the same node);
-3. Story tone customization (style / genre / length preferences injected into the prompt).
