@@ -10,6 +10,7 @@ import {
   saveProjects,
 } from "@/lib/storage";
 import { getPath } from "@/lib/storyTree";
+import { TONES, type ToneKey } from "@/lib/tone";
 
 const SAMPLE_OPENINGS = [
   "深夜十二点，我收到一条陌生号码发来的短信：「别回头，你身后的路灯今晚会灭。」",
@@ -33,6 +34,8 @@ export default function HomePage() {
   // 访问口令（仅当服务端配置了 ACCESS_CODE 时才要求输入）
   const [accessRequired, setAccessRequired] = useState(false);
   const [accessCode, setAccessCode] = useState("");
+  // 创作基调（单选，默认自由发挥）
+  const [tone, setTone] = useState<ToneKey>("free");
 
   useEffect(() => {
     setProjects([...loadProjects()].sort((a, b) => b.updatedAt - a.updatedAt));
@@ -57,7 +60,8 @@ export default function HomePage() {
     if (accessRequired) {
       sessionStorage.setItem(ACCESS_CODE_STORAGE_KEY, accessCode.trim());
     }
-    router.push(`/write?seed=${encodeURIComponent(trimmed)}`);
+    const toneParam = tone === "free" ? "" : `&tone=${tone}`;
+    router.push(`/write?seed=${encodeURIComponent(trimmed)}${toneParam}`);
   };
 
   // 第一次点击进入确认态，3 秒内再次点击才真正删除
@@ -88,6 +92,25 @@ export default function HomePage() {
       </p>
 
       <div className="mt-10">
+        <p className="font-sans text-xs text-sub">创作基调</p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {TONES.map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => setTone(t.key)}
+              aria-pressed={tone === t.key}
+              className={
+                tone === t.key
+                  ? "rounded-full bg-ink px-3 py-1.5 font-sans text-xs text-cream transition hover:bg-accent"
+                  : "rounded-full border border-line bg-card px-3 py-1.5 font-sans text-xs text-sub transition hover:border-accent/50 hover:text-accent"
+              }
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
         <label htmlFor="seed" className="sr-only">
           故事开头
         </label>

@@ -21,6 +21,7 @@ import {
   upsertProject,
 } from "@/lib/storage";
 import { buildExportFilename, buildMarkdown } from "@/lib/markdown";
+import { normalizeTone, toneLabel } from "@/lib/tone";
 import BranchCard from "./BranchCard";
 import StoryTreePanel from "./StoryTreePanel";
 import { BranchCardsSkeleton, ParagraphSkeleton } from "./Skeletons";
@@ -78,8 +79,9 @@ export default function WriteView() {
   const searchParams = useSearchParams();
   const seed = (searchParams.get("seed") ?? "").trim();
   const projectParam = searchParams.get("project") ?? null;
+  const toneParam = searchParams.get("tone") ?? null;
 
-  // seed 存在 → 新建作品；project 存在 → 从 LocalStorage 恢复完整树与激活位置
+  // seed 存在 → 新建作品（带创作基调，非法值回退默认）；project 存在 → 从 LocalStorage 恢复完整树与激活位置
   const [project, setProject] = useState<Project | null>(() => {
     if (seed) {
       const now = Date.now();
@@ -87,6 +89,7 @@ export default function WriteView() {
         id: crypto.randomUUID(),
         title: deriveTitle(seed),
         tree: createRoot(seed),
+        tone: normalizeTone(toneParam),
         createdAt: now,
         updatedAt: now,
       };
@@ -100,6 +103,8 @@ export default function WriteView() {
   const [failedStep, setFailedStep] = useState<FailedStep>(null);
   const [selectedBranchId, setSelectedBranchId] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  // 命运硬币：被随机选中的卡片 id（0.6s 脉冲动画期间展示）
+  const [diceBranchId, setDiceBranchId] = useState<string | null>(null);
 
   // ref 镜像：回调里读取最新值，避免闭包过期
   const projectRef = useRef(project);
@@ -108,6 +113,7 @@ export default function WriteView() {
   const continueNodeRef = useRef<string | null>(null);
   const branchesForNodeRef = useRef<string | null>(null);
   const pendingSaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const diceRunningRef = useRef(false);
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
   const updateProject = (next: Project) => {
@@ -132,6 +138,28 @@ export default function WriteView() {
   const activeNode = tree ? (tree.nodes[tree.activeLeafId] ?? null) : null;
   const navDisabled = phase === "loading" || phase === "continuing";
 
+  // 故事统计（数据源为树状态，随树变更实时更新）
+  const totalChars = activePath.reduce((n, node) => n + node.content.length, 0);
+  const forkCount = tree
+    ? Object.values(tree.nodes).filter((n) => n.childIds.length >= 2).length
+    : 0;
+  const depth = activePath.length;
+
+  // 命运硬币：随机选中一个分支，0.6s 脉冲后自动进入续写（复用 continueStory）
+  const handleDice = () => {
+    if (phaseRef.current !== "ready" || diceRunningRef.current) return;
+    const node = projectRef.current!.tree.nodes[projectRef.current!.tree.activeLeafId];
+    if (!node || node.branches.length === 0) return;
+    const branch = node.branches[Math.floor(Math.random() * node.branches.length)];
+    diceRunningRef.current = true;
+    setDiceBranchId(branch.id);
+    setTimeout(() => {
+      diceRunningRef.current = false;
+      setDiceBranchId(null);
+      void continueStory(branch);
+    }, 600);
+  };
+
   // 为指定节点请求一轮新分支（回退到 branches 为空的节点时自动调用）
   const fetchBranches = useCallback(async (nodeId: string) => {
     branchesForNodeRef.current = nodeId;
@@ -142,6 +170,7 @@ export default function WriteView() {
     try {
       const data = await postJson<{ branches: Branch[] }>("/api/branches", {
         pathText: buildPathText(projectRef.current!.tree, nodeId),
+        tone: projectRef.current!.tone,
       });
       applyTreeUpdate(setNodeBranches(projectRef.current!.tree, nodeId, data.branches));
       setSelectedBranchId(null);
@@ -172,6 +201,7 @@ export default function WriteView() {
       try {
         const data = await postJson<{ content: string }>("/api/continue", {
           pathText: buildPathText(projectRef.current!.tree, nodeId),
+          tone: projectRef.current!.tone,
           branch,
         });
         applyTreeUpdate(
@@ -410,33 +440,43 @@ export default function WriteView() {
           </div>
         </header>
 
-        {/* 面包屑：当前位置提示 */}
-        <nav
-          aria-label="当前位置"
-          className="flex flex-wrap items-center gap-x-1.5 gap-y-1 font-sans text-xs text-sub"
-        >
-          {activePath.map((node, i) => (
-            <Fragment key={node.id}>
-              {i > 0 && <span aria-hidden="true">→</span>}
-              <button
-                type="button"
-                onClick={() => handleNavigate(node.id)}
-                disabled={navDisabled || node.id === tree.activeLeafId}
-                className={[
-                  node.id === tree.activeLeafId
-                    ? "font-medium text-ink"
-                    : "transition hover:text-accent",
-                  navDisabled && node.id !== tree.activeLeafId
-                    ? "cursor-not-allowed opacity-60"
-                    : "cursor-pointer",
-                ].join(" ")}
-              >
-                第 {i + 1} 段
-                {node.chosenBranchTitle ? ` · 沿「${node.chosenBranchTitle}」` : ""}
-              </button>
-            </Fragment>
-          ))}
-        </nav>
+        {/* 面包屑 + 基调标签 + 故事统计 */}
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5">
+          <nav
+            aria-label="当前位置"
+            className="flex flex-wrap items-center gap-x-1.5 gap-y-1 font-sans text-xs text-sub"
+          >
+            {activePath.map((node, i) => (
+              <Fragment key={node.id}>
+                {i > 0 && <span aria-hidden="true">→</span>}
+                <button
+                  type="button"
+                  onClick={() => handleNavigate(node.id)}
+                  disabled={navDisabled || node.id === tree.activeLeafId}
+                  className={[
+                    node.id === tree.activeLeafId
+                      ? "font-medium text-ink"
+                      : "transition hover:text-accent",
+                    navDisabled && node.id !== tree.activeLeafId
+                      ? "cursor-not-allowed opacity-60"
+                      : "cursor-pointer",
+                  ].join(" ")}
+                >
+                  第 {i + 1} 段
+                  {node.chosenBranchTitle ? ` · 沿「${node.chosenBranchTitle}」` : ""}
+                </button>
+              </Fragment>
+            ))}
+          </nav>
+          <div className="flex shrink-0 items-center gap-3 font-sans text-xs text-sub">
+            <span className="whitespace-nowrap rounded-full border border-line bg-card px-2 py-0.5">
+              基调 · {toneLabel(project.tone)}
+            </span>
+            <span className="whitespace-nowrap">
+              {totalChars} 字 · {forkCount} 个分叉 · 第 {depth} 段
+            </span>
+          </div>
+        </div>
 
         {/* 故事正文 */}
         <section aria-label="故事正文" className="mt-2">
@@ -468,11 +508,27 @@ export default function WriteView() {
 
         {/* 分支方向 */}
         <section aria-label="分支方向" className="mt-8 border-t border-line pt-8">
-          <div className="flex items-baseline justify-between">
+          <div className="flex items-center justify-between gap-2">
             <h2 className="font-serif text-xl font-bold text-ink">
               {branchHeading}
             </h2>
-            <span className="font-sans text-xs text-sub">每轮 3 个方向</span>
+            <div className="flex shrink-0 items-center gap-2">
+              <span className="hidden font-sans text-xs text-sub sm:inline">
+                每轮 3 个方向
+              </span>
+              <button
+                type="button"
+                onClick={handleDice}
+                disabled={
+                  phase !== "ready" ||
+                  !activeNode ||
+                  activeNode.branches.length === 0
+                }
+                className="rounded-lg border border-line bg-card px-3 py-1.5 font-sans text-xs text-sub transition hover:border-accent/50 hover:text-accent disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                🎲 让命运决定
+              </button>
+            </div>
           </div>
 
           <div className="mt-5">
@@ -490,6 +546,7 @@ export default function WriteView() {
                         phase === "continuing" && selectedBranchId === b.id
                       }
                       disabled={phase === "continuing"}
+                      dicePulse={diceBranchId === b.id}
                       onSelect={continueStory}
                     />
                   ))}

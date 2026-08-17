@@ -76,6 +76,9 @@ The main path has three steps:
 
 Advanced capabilities:
 
+- **Creation tone**: choose a tone before starting (Free / Suspense / Warm / Comedy / Dark); the tone travels with every branch & continuation request and is injected into the AI system prompt, so directions and continuations match its atmosphere and pacing. Old works without a tone field automatically behave as "Free";
+- **Coin of Fate**: the "🎲 Let fate decide" button next to the branch cards randomly picks a direction, plays a 0.6s highlight pulse on the card, then enters the continuation flow — identical to manual selection, including loading, error and retry states;
+- **Story stats**: next to the breadcrumb, the current active path shows live "N chars · M forks · segment K" (M counts nodes in the whole tree that have ≥2 children), updating immediately on continuation, backtracking and branch switches;
 - **Backtracking & the branch tree**: the "Story Path" panel (fixed left sidebar on desktop / drawer from the top bar on mobile) shows the full chain from root to the current node. Click any historical node to go back to that moment and choose a new direction. Backtracking never deletes anything: old branches are fully preserved, and fork points (≥2 child branches) list clickable child branches;
 - **Auto-save**: every tree change is debounced 500ms and written to browser LocalStorage. After a refresh, the work, the branch tree, and the active position are fully restored. The "My Works" list on the homepage supports continuing or deleting works (delete requires a two-step confirmation); multiple works never interfere with each other;
 - **Export as Markdown**: the "Export" button at the top of the writing page downloads the current active chain (root → activeLeaf) as Markdown — `# title` (first 12 characters of the root node) plus each paragraph, blank lines between paragraphs, and paragraphs continued along a branch are prefixed with a quote line `> Direction: xx`. Filename: `StoryFork-<title>-<date>.md`, downloaded directly by the browser;
@@ -110,6 +113,7 @@ lib/
   errors.ts                # Unified error responses
   rateLimit.ts             # In-memory sliding-window rate limiter (per IP)
   accessCode.ts            # Optional access-code validation
+  tone.ts                  # Creation tone whitelist / normalization
   *.test.ts                # node:test unit tests (npm test)
 ```
 

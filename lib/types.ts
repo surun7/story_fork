@@ -33,6 +33,7 @@ export type Project = {
   id: string;
   title: string;
   tree: StoryTreeState;
+  tone: string; // 创作基调（tone.ts 白名单 key；旧数据无此字段时按默认处理）
   updatedAt: number;
   createdAt: number;
 };

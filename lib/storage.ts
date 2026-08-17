@@ -1,6 +1,7 @@
 // 作品持久化：序列化/反序列化为纯函数（可单测），LocalStorage 读写带容错。
 // 存储失败（如超出配额）时静默降级为仅内存：不影响使用，仅 console.warn。
 import type { Project, StoryNode, StoryTreeState } from "./types";
+import { normalizeTone } from "./tone.ts";
 
 export const STORAGE_KEY = "storyfork-projects";
 
@@ -45,7 +46,9 @@ function isProject(v: unknown): v is Project {
     typeof v.title === "string" &&
     isStoryTree(v.tree) &&
     typeof v.updatedAt === "number" &&
-    typeof v.createdAt === "number"
+    typeof v.createdAt === "number" &&
+    // tone 为 M5 新增字段：旧数据无此字段也视为合法，反序列化时补默认
+    (v.tone === undefined || typeof v.tone === "string")
   );
 }
 
@@ -53,7 +56,8 @@ export function serializeProjects(projects: Project[]): string {
   return JSON.stringify(projects);
 }
 
-// 容错反序列化：损坏 JSON / 结构不合法一律不抛异常，返回空列表或过滤后的合法条目
+// 容错反序列化：损坏 JSON / 结构不合法一律不抛异常，返回空列表或过滤后的合法条目；
+// 旧作品缺 tone 字段时补默认基调
 export function deserializeProjects(raw: string | null): Project[] {
   if (!raw) return [];
   let data: unknown;
@@ -63,7 +67,7 @@ export function deserializeProjects(raw: string | null): Project[] {
     return [];
   }
   if (!Array.isArray(data)) return [];
-  return data.filter(isProject);
+  return data.filter(isProject).map((p) => ({ ...p, tone: normalizeTone(p.tone) }));
 }
 
 export function loadProjects(): Project[] {

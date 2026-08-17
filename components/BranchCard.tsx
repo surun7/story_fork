@@ -6,6 +6,7 @@ type BranchCardProps = {
   branch: Branch;
   selected: boolean;
   disabled: boolean;
+  dicePulse?: boolean; // 命运硬币选中时的 0.6s 高亮脉冲
   onSelect: (branch: Branch) => void;
 };
 
@@ -13,6 +14,7 @@ export default function BranchCard({
   branch,
   selected,
   disabled,
+  dicePulse = false,
   onSelect,
 }: BranchCardProps) {
   const stateClass = selected
@@ -30,7 +32,9 @@ export default function BranchCard({
       onClick={() => onSelect(branch)}
       disabled={disabled}
       aria-pressed={selected}
-      className={`relative flex w-full flex-col rounded-xl border bg-card p-5 text-left transition-all duration-200 ${stateClass} ${disabledClass}`}
+      className={`relative flex w-full flex-col rounded-xl border bg-card p-5 text-left transition-all duration-200 ${stateClass} ${
+        dicePulse ? "animate-dice-pulse border-accent bg-accentSoft ring-1 ring-accent/40" : ""
+      } ${disabledClass}`}
     >
       {selected && (
         <span className="absolute right-4 top-4 rounded-full bg-accent px-2.5 py-0.5 font-sans text-xs text-cream">

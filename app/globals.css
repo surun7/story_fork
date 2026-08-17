@@ -28,11 +28,27 @@ html {
   }
 }
 
+/* 命运硬币：被随机选中的卡片 0.6s 高亮脉冲 */
+@keyframes dice-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(164, 71, 43, 0);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(164, 71, 43, 0.35);
+    transform: scale(1.02);
+  }
+}
+
 @layer utilities {
   .animate-fade-in {
     animation: fade-in 0.2s ease-out;
   }
   .animate-drawer-in {
     animation: drawer-in 0.25s ease-out;
+  }
+  .animate-dice-pulse {
+    animation: dice-pulse 0.6s ease-in-out;
   }
 }

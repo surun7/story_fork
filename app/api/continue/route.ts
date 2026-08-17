@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { chatCompletion, EmptyContentError, truncatePathText } from "@/lib/llm";
-import { CONTINUE_SYSTEM_PROMPT, buildContinuePrompt } from "@/lib/prompts";
+import {
+  CONTINUE_SYSTEM_PROMPT,
+  buildContinuePrompt,
+  buildToneSuffix,
+} from "@/lib/prompts";
 import { enforceRateLimit, errorResponse, toErrorResponse } from "@/lib/errors";
 import { checkAccessCode } from "@/lib/accessCode";
+import { normalizeTone } from "@/lib/tone";
 
 // 300-500 字中文的宽松下限，仅用于拦截异常空/过短输出
 const MIN_CONTENT_LENGTH = 80;
@@ -20,8 +25,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   } catch {
     return errorResponse(400, "请求体不是有效的 JSON。");
   }
-  const { pathText, branch } = (body ?? {}) as {
+  const { pathText, tone: toneRaw, branch } = (body ?? {}) as {
     pathText?: unknown;
+    tone?: unknown;
     branch?: unknown;
   };
   if (typeof pathText !== "string" || !pathText.trim()) {
@@ -30,6 +36,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       "pathText 不能为空：请传入从开头到当前段落的故事全文。"
     );
   }
+  // 创作基调：白名单校验，非法/缺失静默回退默认（默认不注入 prompt）
+  const tone = normalizeTone(toneRaw);
   // 成本控制：超长全文中间截断，保留开头与最近内容
   const path = truncatePathText(pathText.trim());
   if (typeof branch !== "object" || branch === null) {
@@ -51,7 +59,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     try {
       const content = await chatCompletion(
         [
-          { role: "system", content: CONTINUE_SYSTEM_PROMPT },
+          { role: "system", content: CONTINUE_SYSTEM_PROMPT + buildToneSuffix(tone) },
           {
             role: "user",
             content: buildContinuePrompt(path, {

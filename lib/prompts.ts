@@ -1,4 +1,12 @@
 // 分支生成与续写的 prompt 模板（按产品规格书写）
+import { normalizeTone, toneLabel } from "./tone.ts";
+
+// 基调注入：默认基调不追加任何内容；非默认时在系统提示末尾追加一句
+export function buildToneSuffix(tone: string): string {
+  const key = normalizeTone(tone);
+  if (key === "free") return "";
+  return `\n本故事的创作基调为：${toneLabel(key)}，分支方向与续写需贴合该基调的氛围与节奏。`;
+}
 
 export const BRANCH_SYSTEM_PROMPT =
   "你是一名资深的故事架构师，擅长为正在创作中的故事设计出人意料又自洽的分支走向。";

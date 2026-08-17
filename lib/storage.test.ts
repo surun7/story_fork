@@ -16,7 +16,7 @@ test("作品序列化/反序列化往返：字段与故事树结构完整保留"
     chosenBranchTitle: "冲突升级",
   });
   const projects = [
-    { id: "p1", title: "深夜十二点", tree: t1, createdAt: 1000, updatedAt: 2000 },
+    { id: "p1", title: "深夜十二点", tree: t1, tone: "suspense", createdAt: 1000, updatedAt: 2000 },
   ];
 
   const restored = deserializeProjects(serializeProjects(projects));
@@ -25,6 +25,7 @@ test("作品序列化/反序列化往返：字段与故事树结构完整保留"
   const p = restored[0];
   assert.equal(p.id, "p1");
   assert.equal(p.title, "深夜十二点");
+  assert.equal(p.tone, "suspense");
   assert.equal(p.createdAt, 1000);
   assert.equal(p.updatedAt, 2000);
   // 树结构与激活位置完整恢复
@@ -56,8 +57,8 @@ test("损坏数据容错：JSON 解析失败与结构不合法一律返回空列
 });
 
 test("upsertProject / removeProject / deriveTitle", () => {
-  const a = { id: "a", title: "甲", tree: createRoot("甲"), createdAt: 1, updatedAt: 1 };
-  const b = { id: "b", title: "乙", tree: createRoot("乙"), createdAt: 2, updatedAt: 2 };
+  const a = { id: "a", title: "甲", tree: createRoot("甲"), tone: "free", createdAt: 1, updatedAt: 1 };
+  const b = { id: "b", title: "乙", tree: createRoot("乙"), tone: "warm", createdAt: 2, updatedAt: 2 };
   const both = upsertProject([a], b);
   assert.equal(both.length, 2);
   // 同 id 覆盖而非追加
@@ -68,4 +69,23 @@ test("upsertProject / removeProject / deriveTitle", () => {
   assert.equal(removed.length, 1);
   assert.equal(removed[0].id, "b");
   assert.equal(deriveTitle("  深夜十二点，我收到一条陌生号码发来的短信。  "), "深夜十二点，我收到一条陌");
+});
+
+test("旧数据兼容：无 tone 字段的作品反序列化后回退为默认基调，不报错", () => {
+  const t0 = createRoot("旧作品开头。");
+  const oldProject = {
+    id: "old-1",
+    title: "旧作品",
+    tree: JSON.parse(JSON.stringify(t0)),
+    createdAt: 100,
+    updatedAt: 200,
+    // 故意不写 tone 字段，模拟 M5 之前保存的数据
+  };
+  const restored = deserializeProjects(JSON.stringify([oldProject]));
+  assert.equal(restored.length, 1);
+  assert.equal(restored[0].tone, "free");
+  assert.equal(restored[0].tree.rootId, t0.rootId);
+  // 非法 tone 值同样回退默认
+  const badTone = deserializeProjects(JSON.stringify([{ ...oldProject, tone: "bogus" }]));
+  assert.equal(badTone[0].tone, "free");
 });

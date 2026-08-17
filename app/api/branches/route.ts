@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { chatCompletion, EmptyContentError, truncatePathText } from "@/lib/llm";
-import { BRANCH_SYSTEM_PROMPT, buildBranchesPrompt } from "@/lib/prompts";
+import { BRANCH_SYSTEM_PROMPT, buildBranchesPrompt, buildToneSuffix } from "@/lib/prompts";
 import { enforceRateLimit, errorResponse, toErrorResponse } from "@/lib/errors";
 import { checkAccessCode } from "@/lib/accessCode";
+import { normalizeTone } from "@/lib/tone";
 import type { Branch } from "@/lib/types";
 
 const MAX_BRANCHES = 3;
@@ -57,13 +58,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   } catch {
     return errorResponse(400, "请求体不是有效的 JSON。");
   }
-  const { pathText } = (body ?? {}) as { pathText?: unknown };
+  const { pathText, tone: toneRaw } = (body ?? {}) as {
+    pathText?: unknown;
+    tone?: unknown;
+  };
   if (typeof pathText !== "string" || !pathText.trim()) {
     return errorResponse(
       400,
       "pathText 不能为空：请传入从开头到当前段落的故事全文。"
     );
   }
+  // 创作基调：白名单校验，非法/缺失静默回退默认（默认不注入 prompt）
+  const tone = normalizeTone(toneRaw);
   // 成本控制：超长全文中间截断，保留开头与最近内容
   const path = truncatePathText(pathText.trim());
 
@@ -74,7 +80,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     try {
       raw = await chatCompletion(
         [
-          { role: "system", content: BRANCH_SYSTEM_PROMPT },
+          { role: "system", content: BRANCH_SYSTEM_PROMPT + buildToneSuffix(tone) },
           { role: "user", content: buildBranchesPrompt(path) },
         ],
         { temperature: attempt === 1 ? 0.85 : 0.95, maxTokens: 800 }
