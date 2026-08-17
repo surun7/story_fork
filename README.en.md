@@ -4,13 +4,15 @@
 
 StoryFork is an AI-powered branching story co-creation tool that solves the problem of "getting stuck writing a story alone, without being locked into a single ending": you enter a story opening, the AI generates 3 distinctly different plot directions, you pick one, the AI continues the story along that path, then branches into 3 new directions again — and the story grows like a tree. The core philosophy is **"AI diverges, humans choose"** — the AI offers possibilities, while you hold the narrative direction. When you go back to any historical node and choose again, previously grown branches are fully preserved; this "grown tree" is itself the work.
 
-## Quick Start
+## Quick Start (Local Development)
 
 Prerequisites: Node.js 18.17+ (20+ recommended; unit tests run TypeScript directly and require Node 22.6+)
 
 ```bash
-git clone <repo-url> story_fork
+# Clone this repository
+git clone https://github.com/surun7/story_fork.git
 cd story_fork
+
 npm install
 cp .env.example .env.local   # Windows: copy .env.example .env.local
 npm run dev                  # open http://localhost:3000
@@ -31,6 +33,36 @@ Other commands:
 npm test                                  # unit tests (node:test, zero-dependency, no build step)
 npm run build && npm run start            # production build and start
 ```
+
+## Deployment (Production)
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/surun7/story_fork.git
+cd story_fork
+
+# 2. Install dependencies
+npm install
+
+# 3. Configure environment variables (server-side only; .env.local is gitignored)
+cp .env.example .env.local   # Windows: copy .env.example .env.local
+# Edit .env.local: set LLM_API_KEY; consider setting ACCESS_CODE in production
+
+# 4. Build and start
+npm run build
+npm run start                 # default port 3000; change it with: npm run start -- -p 8080 or PORT=8080
+
+# 5. Health check
+curl -I http://localhost:3000
+```
+
+Production notes:
+
+- **Reverse proxy & HTTPS**: point your domain to `127.0.0.1:3000` with Nginx / Caddy or similar and enable HTTPS; make sure the `X-Forwarded-For` header is forwarded so rate limiting counts the real client IP (otherwise it falls back to `x-real-ip` / `unknown`);
+- **Process manager**: run `npm run start` under pm2 or similar (e.g., `pm2 start npm --name story-fork -- run start`); Node 20+ recommended in production;
+- **Access code**: set `ACCESS_CODE` in production to prevent unauthorized use (see Security Notes);
+- **Multi-instance deployment**: the rate limiter is an in-memory single-instance implementation — it is an approximation with multiple replicas; use a distributed limiter such as Upstash Redis for production multi-instance setups;
+- **Key safety**: environment files (`.env`, `.env.*`, `.env.local`) are all gitignored; run `git status` before pushing to confirm that keys and local agent data (e.g., `.zcode/`) never reach the remote repository.
 
 ## Features & Experience Path
 

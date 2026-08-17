@@ -6,13 +6,15 @@
 
 故事岔口（StoryFork）是一个 AI 分支式故事共创工具，解决「一个人写故事容易卡住、又不想被单一结局绑架」的问题：输入一段故事开头，AI 生成 3 个风格迥异的剧情走向，你选定一个方向后 AI 沿此续写正文，再分岔出新的三个方向，循环往复，故事像树一样生长。核心理念是 **「AI 负责发散，人负责选择」**——AI 提供可能性，人掌握叙事的方向感；回退到任意历史节点重新选择时，已生长的分支完整保留，这棵「生长过的树」本身就是作品。
 
-## 快速开始
+## 快速开始（本地开发）
 
 前置要求：Node.js 18.17+（推荐 20+；单元测试直接运行 TypeScript，需 Node 22.6+）
 
 ```bash
-git clone <仓库地址> story_fork
+# 拉取本仓库代码
+git clone https://github.com/surun7/story_fork.git
 cd story_fork
+
 npm install
 cp .env.example .env.local   # Windows: copy .env.example .env.local
 npm run dev                  # 打开 http://localhost:3000
@@ -33,6 +35,36 @@ npm run dev                  # 打开 http://localhost:3000
 npm test                                  # 单元测试（node:test，零依赖零构建）
 npm run build && npm run start            # 生产构建与启动
 ```
+
+## 部署（生产环境）
+
+```bash
+# 1. 拉取代码
+git clone https://github.com/surun7/story_fork.git
+cd story_fork
+
+# 2. 安装依赖
+npm install
+
+# 3. 配置环境变量（密钥只存服务端；.env.local 已被 .gitignore 忽略，不会入库）
+cp .env.example .env.local   # Windows: copy .env.example .env.local
+# 编辑 .env.local：填入 LLM_API_KEY；生产环境建议同时配置 ACCESS_CODE
+
+# 4. 构建并启动
+npm run build
+npm run start                 # 默认 3000 端口；换端口：npm run start -- -p 8080 或 PORT=8080
+
+# 5. 健康检查
+curl -I http://localhost:3000
+```
+
+生产注意事项：
+
+- **反向代理与 HTTPS**：用 Nginx / Caddy 等把域名转发到 `127.0.0.1:3000` 并启用 HTTPS；务必传递 `X-Forwarded-For` 请求头，限流才会按真实客户端 IP 计数（未配置时兜底 `x-real-ip` / unknown）；
+- **进程守护**：用 pm2 等守护进程托管 `npm run start`（示例：`pm2 start npm --name story-fork -- run start`）；生产环境建议 Node 20+；
+- **访问口令**：生产环境建议设置 `ACCESS_CODE`，防止未授权使用（详见「安全说明」）；
+- **多实例部署**：当前限流为单实例内存实现，多副本下为近似限流，生产多实例应接入 Upstash Redis 等分布式限流；
+- **密钥安全**：`.env`、`.env.*`、`.env.local` 等环境变量文件均已写入 .gitignore，推送前可执行 `git status` 复核，确保密钥与 agent 本地数据（`.zcode/` 等）不会进入远端仓库。
 
 ## 功能与体验路径
 
