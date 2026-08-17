@@ -26,7 +26,7 @@ npm run dev                  # 打开 http://localhost:3000
 | --- | --- | --- | --- |
 | `LLM_API_KEY` | ✅ | 无 | 你的 LLM API Key（如 DeepSeek 开放平台 platform.deepseek.com） |
 | `LLM_BASE_URL` | 否 | `https://api.deepseek.com` | OpenAI Chat Completions 兼容的接口地址 |
-| `LLM_MODEL` | 否 | `deepseek-chat` | 模型名（建议使用官方稳定模型，如 `deepseek-chat`） |
+| `LLM_MODEL` | 否 | `deepseek-v4-flash` | 模型名 |
 
 > 提示：模型偶发返回空内容时，接口会自动重试 1 次后再报错；页面错误面板的「重试」只重放失败的那一步。
 | `ACCESS_CODE` | 否 | 无 | 可选访问口令；留空不启用，配置后前端要求输入口令并随请求头校验 |

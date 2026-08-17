@@ -24,7 +24,7 @@ Environment variables (keys are read from `process.env` on the server side only,
 | --- | --- | --- | --- |
 | `LLM_API_KEY` | ✅ | none | Your LLM API key (e.g., from DeepSeek Open Platform platform.deepseek.com) |
 | `LLM_BASE_URL` | no | `https://api.deepseek.com` | OpenAI Chat Completions compatible endpoint |
-| `LLM_MODEL` | no | `deepseek-chat` | Model name (use the officially documented stable model, e.g., `deepseek-chat`) |
+| `LLM_MODEL` | no | `deepseek-v4-flash` | Model name |
 
 > Tip: transient empty model responses are automatically retried once before an error is shown; the "Retry" button on the page error panel only replays the failed step.
 | `ACCESS_CODE` | no | none | Optional access code; empty disables it. When set, the homepage asks for it and the server validates it via a request header |

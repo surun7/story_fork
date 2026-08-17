@@ -45,7 +45,7 @@ export type LLMConfig = {
 };
 
 export const DEFAULT_LLM_BASE_URL = "https://api.deepseek.com";
-export const DEFAULT_LLM_MODEL = "deepseek-chat";
+export const DEFAULT_LLM_MODEL = "deepseek-v4-flash";
 export const LLM_TIMEOUT_MS = 30_000;
 
 // pathText 成本控制：超过上限时中间截断，保留开头与最近内容
