@@ -93,7 +93,7 @@ export default function HomePage() {
 
       <div className="mt-10">
         <p className="font-sans text-xs text-sub">创作基调</p>
-        <div className="mt-2 flex flex-wrap gap-2">
+        <div className="mt-2 mb-5 flex flex-wrap gap-2">
           {TONES.map((t) => (
             <button
               key={t.key}
